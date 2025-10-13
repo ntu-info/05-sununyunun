@@ -90,7 +90,10 @@ def create_app():
         except Exception as e:
             payload["error"] = str(e)
             return jsonify(payload), 500
-
+    
+    @app.get("/dissociate/terms/<term_a>/<term_b>", endpoint="dissociate_terms")
+    def dissociate_terms(term_a, term_b):
+        return jsonify({"msg": f"This works for {term_a} vs {term_b}"})
     return app
 
 # WSGI entry point (no __main__)
