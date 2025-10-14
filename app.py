@@ -103,9 +103,9 @@ def create_app():
                     SELECT DISTINCT a.study_id
                     FROM ns.annotations_terms AS a
                     WHERE a.term ILIKE :term_a
-                      AND a.study_id NOT IN (
+                    AND a.study_id NOT IN (
                         SELECT study_id FROM ns.annotations_terms WHERE term ILIKE :term_b
-                      )
+                    )
                     LIMIT 50;
                 """)
 
@@ -140,6 +140,6 @@ def create_app():
 
         except Exception as e:
             return jsonify({"error": str(e)}), 500
-
+    return app
 # WSGI entry point (no __main__)
 app = create_app()
