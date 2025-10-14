@@ -140,6 +140,66 @@ def create_app():
 
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+        
+        # 🧠 Dissociate by coordinates endpoint
+    @app.get("/dissociate/locations/<coords_a>/<coords_b>", endpoint="dissociate_locations")
+    def dissociate_locations(coords_a, coords_b):
+        try:
+            x1, y1, z1 = map(float, coords_a.split("_"))
+            x2, y2, z2 = map(float, coords_b.split("_"))
+        except ValueError:
+            return jsonify({"error": "Invalid coordinate format. Use x_y_z with underscores."}), 400
+
+        eng = get_engine()
+        try:
+            with eng.begin() as conn:
+                conn.execute(text("SET search_path TO ns, public;"))
+
+                # Helper: find studies containing a coordinate point (using ST_Equals for exact match)
+                def get_studies(x, y, z):
+                    query = text("""
+                        SELECT DISTINCT study_id
+                        FROM ns.coordinates
+                        WHERE ST_X(geom) = :x
+                          AND ST_Y(geom) = :y
+                          AND ST_Z(geom) = :z
+                        LIMIT 100;
+                    """)
+                    results = conn.execute(query, {"x": x, "y": y, "z": z}).fetchall()
+                    return [r[0] for r in results]
+
+                studies_a = set(get_studies(x1, y1, z1))
+                studies_b = set(get_studies(x2, y2, z2))
+
+                dissoc_a_b = list(studies_a - studies_b)
+                dissoc_b_a = list(studies_b - studies_a)
+
+                # Optional: fetch titles from metadata
+                if dissoc_a_b or dissoc_b_a:
+                    all_ids = list(dissoc_a_b | dissoc_b_a)
+                    meta_query = text("""
+                        SELECT study_id, title
+                        FROM ns.metadata
+                        WHERE study_id = ANY(:ids)
+                    """)
+                    meta_results = conn.execute(meta_query, {"ids": all_ids}).mappings().all()
+                    meta_dict = {r["study_id"]: r["title"] for r in meta_results}
+                else:
+                    meta_dict = {}
+
+                response = {
+                    "coords_a": [x1, y1, z1],
+                    "coords_b": [x2, y2, z2],
+                    "A_minus_B": [{"study_id": sid, "title": meta_dict.get(sid)} for sid in dissoc_a_b],
+                    "B_minus_A": [{"study_id": sid, "title": meta_dict.get(sid)} for sid in dissoc_b_a]
+                }
+
+                return jsonify(response), 200
+
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+
     return app
 # WSGI entry point (no __main__)
 app = create_app()
