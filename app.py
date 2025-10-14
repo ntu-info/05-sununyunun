@@ -93,8 +93,53 @@ def create_app():
     
     @app.get("/dissociate/terms/<term_a>/<term_b>", endpoint="dissociate_terms")
     def dissociate_terms(term_a, term_b):
-        return jsonify({"msg": f"This works for {term_a} vs {term_b}"})
-    return app
+        eng = get_engine()
+        try:
+            with eng.begin() as conn:
+                conn.execute(text("SET search_path TO ns, public;"))
+
+                # 找出有 term_a 但沒有 term_b 的研究
+                query = text("""
+                    SELECT DISTINCT a.study_id
+                    FROM ns.annotations_terms AS a
+                    WHERE a.term ILIKE :term_a
+                      AND a.study_id NOT IN (
+                        SELECT study_id FROM ns.annotations_terms WHERE term ILIKE :term_b
+                      )
+                    LIMIT 50;
+                """)
+
+                results = conn.execute(query, {"term_a": f"%{term_a}%", "term_b": f"%{term_b}%"}).fetchall()
+                study_ids = [r[0] for r in results]
+
+                if not study_ids:
+                    return jsonify({
+                        "term_a": term_a,
+                        "term_b": term_b,
+                        "count": 0,
+                        "studies": []
+                    }), 200
+
+                # 可選：連接 metadata 拿到標題
+                meta_query = text("""
+                    SELECT study_id, title
+                    FROM ns.metadata
+                    WHERE study_id = ANY(:ids)
+                    LIMIT 50;
+                """)
+                meta_results = conn.execute(meta_query, {"ids": study_ids}).mappings().all()
+
+                studies = [dict(r) for r in meta_results]
+
+                return jsonify({
+                    "term_a": term_a,
+                    "term_b": term_b,
+                    "count": len(studies),
+                    "studies": studies
+                }), 200
+
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
 
 # WSGI entry point (no __main__)
 app = create_app()
