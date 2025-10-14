@@ -141,7 +141,8 @@ def create_app():
         except Exception as e:
             return jsonify({"error": str(e)}), 500
         
-        # 🧠 Dissociate by coordinates endpoint
+    # 🧠 Dissociate by coordinates endpoint
+    
     @app.get("/dissociate/locations/<coords_a>/<coords_b>", endpoint="dissociate_locations")
     def dissociate_locations(coords_a, coords_b):
         try:
@@ -176,7 +177,7 @@ def create_app():
 
                 # Optional: fetch titles from metadata
                 if dissoc_a_b or dissoc_b_a:
-                    all_ids = list(dissoc_a_b | dissoc_b_a)
+                    all_ids = list(set(dissoc_a_b) | set(dissoc_b_a))  # <-- 修正這裡
                     meta_query = text("""
                         SELECT study_id, title
                         FROM ns.metadata
@@ -186,6 +187,7 @@ def create_app():
                     meta_dict = {r["study_id"]: r["title"] for r in meta_results}
                 else:
                     meta_dict = {}
+
 
                 response = {
                     "coords_a": [x1, y1, z1],
