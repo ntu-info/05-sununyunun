@@ -128,13 +128,31 @@ def create_app():
                 #  HTML / JSON 自動切換
                 if request.accept_mimetypes.accept_html:
                     html = f"""
-                    <h2>🧠 Dissociate by Terms</h2>
-                    <p><b>Studies mentioned {term_a} but not {term_b}</b></p>
-                    
-                    <p><b>Count:</b> {data['count']}</p>
-                    <ul>
-                        {''.join(f"<li>{s['study_id']}: {s.get('title','(no title)')}</li>" for s in data['studies'])}
-                    </ul>
+                    <html>
+                    <head>
+                        <meta charset="utf-8">
+                        <title>Dissociate by Terms</title>
+                        <style>
+                            body {{ font-family: system-ui, sans-serif; margin: 40px; }}
+                            h2 {{ font-size: 1.5em; margin-bottom: 0.5em; }}
+                            table {{ border-collapse: collapse; width: 80%; margin-top: 1em; }}
+                            th, td {{ border: 1px solid #ccc; padding: 8px 12px; text-align: left; }}
+                            th {{ background-color: #f3f4f6; }}
+                            tr:nth-child(even) {{ background-color: #fafafa; }}
+                            .count {{ font-weight: bold; color: #2563eb; }}
+                        </style>
+                    </head>
+                    <body>
+                        <h2>🧠 Dissociate by Terms</h2>
+                        <p>Studies mentioning <b>{term_a}</b> but not <b>{term_b}</b></p>
+                        <p class="count">Count: {data['count']}</p>
+
+                        <table>
+                            <tr><th>Study ID</th><th>Title</th></tr>
+                            {''.join(f"<tr><td>{s['study_id']}</td><td>{s.get('title','(no title)')}</td></tr>" for s in data['studies'])}
+                        </table>
+                    </body>
+                    </html>
                     """
                     return make_response(html, 200)
                 else:
@@ -200,13 +218,37 @@ def create_app():
             #  HTML / JSON 自動切換
             if request.accept_mimetypes.accept_html:
                 html = f"""
-                <h2>📍 Dissociate MIN coordinates</h2>
-                <p><b>Studies that mention {coords_a} but not {coords_b}.</b> </p>
-    
-                <h3>A − B</h3>
-                <ul>{''.join(f"<li>{s['study_id']}: {s.get('title','(no title)')}</li>" for s in data['A_minus_B'])}</ul>
-                <h3>B − A</h3>
-                <ul>{''.join(f"<li>{s['study_id']}: {s.get('title','(no title)')}</li>" for s in data['B_minus_A'])}</ul>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <title>Dissociate by Coordinates</title>
+                    <style>
+                        body {{ font-family: system-ui, sans-serif; margin: 40px; }}
+                        h2 {{ font-size: 1.5em; margin-bottom: 0.5em; }}
+                        table {{ border-collapse: collapse; width: 80%; margin-top: 1em; }}
+                        th, td {{ border: 1px solid #ccc; padding: 8px 12px; text-align: left; }}
+                        th {{ background-color: #f3f4f6; }}
+                        tr:nth-child(even) {{ background-color: #fafafa; }}
+                        .count {{ font-weight: bold; color: #2563eb; }}
+                    </style>
+                </head>
+                <body>
+                    <h2>📍 Dissociate by Coordinates</h2>
+                    <p>Comparing <b>{coords_a}</b> vs <b>{coords_b}</b></p>
+
+                    <h3>A − B Studies that mention {coords_a} but not {coords_b}.</h3>
+                    <table>
+                        <tr><th>Study ID</th><th>Title</th></tr>
+                        {''.join(f"<tr><td>{s['study_id']}</td><td>{s.get('title','(no title)')}</td></tr>" for s in data['A_minus_B'])}
+                    </table>
+
+                    <h3>B − A Studies that mention {coords_b} but not {coords_a}.</h3>
+                    <table>
+                        <tr><th>Study ID</th><th>Title</th></tr>
+                        {''.join(f"<tr><td>{s['study_id']}</td><td>{s.get('title','(no title)')}</td></tr>" for s in data['B_minus_A'])}
+                    </table>
+                </body>
+                </html>
                 """
                 return make_response(html, 200)
             else:
