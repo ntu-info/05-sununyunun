@@ -113,31 +113,32 @@ def create_app():
                 study_ids = [r[0] for r in results]
 
                 if not study_ids:
-                    return jsonify({
-                        "term_a": term_a,
-                        "term_b": term_b,
-                        "count": 0,
-                        "studies": []
-                    }), 200
+                    data = {"term_a": term_a, "term_b": term_b, "count": 0, "studies": []}
+                else:
+                    meta_query = text("""
+                        SELECT study_id, title
+                        FROM ns.metadata
+                        WHERE study_id = ANY(:ids)
+                        LIMIT 50;
+                    """)
+                    meta_results = conn.execute(meta_query, {"ids": study_ids}).mappings().all()
+                    studies = [dict(r) for r in meta_results]
+                    data = {"term_a": term_a, "term_b": term_b, "count": len(studies), "studies": studies}
 
-                # 可選：連接 metadata 拿到標題
-                meta_query = text("""
-                    SELECT study_id, title
-                    FROM ns.metadata
-                    WHERE study_id = ANY(:ids)
-                    LIMIT 50;
-                """)
-                meta_results = conn.execute(meta_query, {"ids": study_ids}).mappings().all()
-
-                studies = [dict(r) for r in meta_results]
-
-                return jsonify({
-                    "term_a": term_a,
-                    "term_b": term_b,
-                    "count": len(studies),
-                    "studies": studies
-                }), 200
-
+                #  HTML / JSON 自動切換
+                if request.accept_mimetypes.accept_html:
+                    html = f"""
+                    <h2>🧠 Dissociate by Terms</h2>
+                    <p><b>Term A:</b> {term_a}</p>
+                    <p><b>Term B:</b> {term_b}</p>
+                    <p><b>Count:</b> {data['count']}</p>
+                    <ul>
+                        {''.join(f"<li>{s['study_id']}: {s.get('title','(no title)')}</li>" for s in data['studies'])}
+                    </ul>
+                    """
+                    return make_response(html, 200)
+                else:
+                    return jsonify(data), 200
         except Exception as e:
             return jsonify({"error": str(e)}), 500
         
