@@ -129,8 +129,8 @@ def create_app():
                 if request.accept_mimetypes.accept_html:
                     html = f"""
                     <h2>🧠 Dissociate by Terms</h2>
-                    <p><b>Term A:</b> {term_a}</p>
-                    <p><b>Term B:</b> {term_b}</p>
+                    <p><b>Studies mentioned {term_a} but not {term_b}</b></p>
+                    
                     <p><b>Count:</b> {data['count']}</p>
                     <ul>
                         {''.join(f"<li>{s['study_id']}: {s.get('title','(no title)')}</li>" for s in data['studies'])}
@@ -190,14 +190,28 @@ def create_app():
                     meta_dict = {}
 
 
-                response = {
-                    "coords_a": [x1, y1, z1],
-                    "coords_b": [x2, y2, z2],
-                    "A_minus_B": [{"study_id": sid, "title": meta_dict.get(sid)} for sid in dissoc_a_b],
-                    "B_minus_A": [{"study_id": sid, "title": meta_dict.get(sid)} for sid in dissoc_b_a]
-                }
+            data = {
+                "coords_a": [x1, y1, z1],
+                "coords_b": [x2, y2, z2],
+                "A_minus_B": [{"study_id": sid, "title": meta_dict.get(sid)} for sid in dissoc_a_b],
+                "B_minus_A": [{"study_id": sid, "title": meta_dict.get(sid)} for sid in dissoc_b_a]
+            }
 
-                return jsonify(response), 200
+            #  HTML / JSON 自動切換
+            if request.accept_mimetypes.accept_html:
+                html = f"""
+                <h2>📍 Dissociate MIN coordinates</h2>
+                <p><b>Studies that mention {coords_a} but not {coords_b}.</b> </p>
+    
+                <h3>A − B</h3>
+                <ul>{''.join(f"<li>{s['study_id']}: {s.get('title','(no title)')}</li>" for s in data['A_minus_B'])}</ul>
+                <h3>B − A</h3>
+                <ul>{''.join(f"<li>{s['study_id']}: {s.get('title','(no title)')}</li>" for s in data['B_minus_A'])}</ul>
+                """
+                return make_response(html, 200)
+            else:
+                return jsonify(data), 200
+
 
         except Exception as e:
             return jsonify({"error": str(e)}), 500
